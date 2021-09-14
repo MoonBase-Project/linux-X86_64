@@ -2051,6 +2051,13 @@ unsigned find_lock_entries(struct address_space *mapping, pgoff_t start,
 		indices[pvec->nr] = xas.xa_index;
 		if (!pagevec_add(pvec, page))
 			break;
+		if (mapping->a_ops->batch_lock_tabu)
+			/*
+			 * the file system doesn't allow to hold
+			 * many pages locked, while calling
+			 * ->invalidatepage() for one of them
+			 */
+			break;
 		goto next;
 unlock:
 		unlock_page(page);
@@ -2131,6 +2138,7 @@ out:
 
 	return ret;
 }
+EXPORT_SYMBOL(find_get_pages_range);
 
 /**
  * find_get_pages_contig - gang contiguous pagecache lookup

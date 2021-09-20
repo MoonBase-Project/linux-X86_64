@@ -3163,11 +3163,12 @@ void lock_sock_nested(struct sock *sk, int subclass)
 	if (sk->sk_lock.owned)
 		__lock_sock(sk);
 	sk->sk_lock.owned = 1;
-	spin_unlock_bh(&sk->sk_lock.slock);
+	spin_unlock(&sk->sk_lock.slock);
 	/*
 	 * The sk_lock has mutex_lock() semantics here:
 	 */
 	mutex_acquire(&sk->sk_lock.dep_map, subclass, 0, _RET_IP_);
+	local_bh_enable();
 }
 EXPORT_SYMBOL(lock_sock_nested);
 
@@ -3216,12 +3217,13 @@ bool lock_sock_fast(struct sock *sk) __acquires(&sk->sk_lock.slock)
 
 	__lock_sock(sk);
 	sk->sk_lock.owned = 1;
-	spin_unlock_bh(&sk->sk_lock.slock);
+	spin_unlock(&sk->sk_lock.slock);
 	/*
 	 * The sk_lock has mutex_lock() semantics here:
 	 */
 	mutex_acquire(&sk->sk_lock.dep_map, 0, 0, _RET_IP_);
 	__acquire(&sk->sk_lock.slock);
+	local_bh_enable();
 	return true;
 }
 EXPORT_SYMBOL(lock_sock_fast);

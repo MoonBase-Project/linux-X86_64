@@ -291,6 +291,9 @@
 /* Define if you have the iconv() function and it works. */
 /* #undef HAVE_ICONV */
 
+/* Define if compiler supports -Wimplicit-fallthrough */
+#define HAVE_IMPLICIT_FALLTHROUGH 1
+
 /* yes */
 #define HAVE_INODE_LOCK_SHARED 1
 
@@ -811,7 +814,7 @@
 /* #undef ZFS_IS_GPL_COMPATIBLE */
 
 /* Define the project alias string. */
-#define ZFS_META_ALIAS "zfs-2.1.99-451_g7443299fe"
+#define ZFS_META_ALIAS "zfs-2.1.99-456_g139690d6c"
 
 /* Define the project author. */
 #define ZFS_META_AUTHOR "OpenZFS"
@@ -820,7 +823,7 @@
 /* #undef ZFS_META_DATA */
 
 /* Define the maximum compatible kernel version. */
-#define ZFS_META_KVER_MAX "5.13"
+#define ZFS_META_KVER_MAX "5.14"
 
 /* Define the minimum compatible kernel version. */
 #define ZFS_META_KVER_MIN "3.10"
@@ -841,7 +844,7 @@
 #define ZFS_META_NAME "zfs"
 
 /* Define the project release. */
-#define ZFS_META_RELEASE "451_g7443299fe"
+#define ZFS_META_RELEASE "456_g139690d6c"
 
 /* Define the project version. */
 #define ZFS_META_VERSION "2.1.99"

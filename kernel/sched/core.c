@@ -70,6 +70,26 @@ __read_mostly int sysctl_resched_latency_warn_ms = 100;
 __read_mostly int sysctl_resched_latency_warn_once = 1;
 #endif /* CONFIG_SCHED_DEBUG */
 
+DEFINE_STATIC_KEY_FALSE(__turbo_sched_enabled);
+static DEFINE_MUTEX(turbo_sched_lock);
+static int turbo_sched_count;
+
+void turbo_sched_get(void)
+{
+	mutex_lock(&turbo_sched_lock);
+	if (!turbo_sched_count++)
+		static_branch_enable(&__turbo_sched_enabled);
+	mutex_unlock(&turbo_sched_lock);
+}
+
+void turbo_sched_put(void)
+{
+	mutex_lock(&turbo_sched_lock);
+	if (!--turbo_sched_count)
+		static_branch_disable(&__turbo_sched_enabled);
+	mutex_unlock(&turbo_sched_lock);
+}
+
 /*
  * Number of tasks to iterate in a single balance run.
  * Limited because this is done with IRQs disabled.

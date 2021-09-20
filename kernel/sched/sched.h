@@ -2992,6 +2992,15 @@ static inline bool sched_energy_enabled(void) { return false; }
 
 #endif /* CONFIG_ENERGY_MODEL && CONFIG_CPU_FREQ_GOV_SCHEDUTIL */
 
+void turbo_sched_get(void);
+void turbo_sched_put(void);
+DECLARE_STATIC_KEY_FALSE(__turbo_sched_enabled);
+
+static inline bool is_turbosched_enabled(void)
+{
+	return static_branch_unlikely(&__turbo_sched_enabled);
+}
+
 #ifdef CONFIG_MEMBARRIER
 /*
  * The scheduler provides memory barriers required by membarrier between:

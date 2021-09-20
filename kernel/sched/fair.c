@@ -5720,6 +5720,8 @@ dequeue_throttle:
 /* Working cpumask for: load_balance, load_balance_newidle. */
 DEFINE_PER_CPU(cpumask_var_t, load_balance_mask);
 DEFINE_PER_CPU(cpumask_var_t, select_idle_mask);
+/* A cpumask to find active cores in the system. */
+DEFINE_PER_CPU(cpumask_var_t, turbo_sched_mask);
 
 #ifdef CONFIG_NO_HZ_COMMON
 
@@ -6324,6 +6326,14 @@ static inline bool asym_fits_capacity(int task_util, int cpu)
 	return true;
 }
 
+static inline bool is_task_jitter(struct task_struct *p)
+{
+	if (p->flags & PF_CAN_BE_PACKED)
+		return true;
+
+	return false;
+}
+
 #ifdef CONFIG_SCHED_SMT
 
 #ifndef arch_scale_core_capacity
@@ -6341,6 +6351,81 @@ static inline unsigned long arch_scale_core_capacity(int first_thread,
 }
 #endif
 
+/*
+ * Core is defined as under-utilized in case if the aggregated utilization of a
+ * all the CPUs in a core is less than 12.5%
+ */
+#define UNDERUTILIZED_THRESHOLD 3
+static inline bool core_underutilized(unsigned long core_util,
+				      unsigned long core_capacity)
+{
+	return core_util < (core_capacity >> UNDERUTILIZED_THRESHOLD);
+}
+
+/*
+ * Try to find a non idle core in the system  with spare capacity
+ * available for task packing, thereby keeping minimal cores active.
+ * Uses first fit algorithm to pack low util jitter tasks on active cores.
+ */
+static int select_non_idle_core(struct task_struct *p, int prev_cpu, int target)
+{
+	struct cpumask *cpus = this_cpu_cpumask_var_ptr(turbo_sched_mask);
+	int iter_cpu, sibling;
+
+	cpumask_and(cpus, cpu_online_mask, p->cpus_ptr);
+
+	for_each_cpu_wrap(iter_cpu, cpus, prev_cpu) {
+		unsigned long core_util = 0;
+		unsigned long core_cap = arch_scale_core_capacity(iter_cpu,
+				capacity_of(iter_cpu));
+		unsigned long est_util = 0, est_util_enqueued = 0;
+		unsigned long util_best_cpu = ULONG_MAX;
+		int best_cpu = iter_cpu;
+		struct cfs_rq *cfs_rq;
+
+		for_each_cpu(sibling, cpu_smt_mask(iter_cpu)) {
+			__cpumask_clear_cpu(sibling, cpus);
+			core_util += cpu_util(sibling);
+
+			/*
+			 * Keep track of least utilized CPU in the core
+			 */
+			if (cpu_util(sibling) < util_best_cpu) {
+				util_best_cpu = cpu_util(sibling);
+				best_cpu = sibling;
+			}
+		}
+
+		/*
+		 * Find if the selected task will fit into this core or not by
+		 * estimating the utilization of the core.
+		 */
+		if (!core_underutilized(core_util, core_cap)) {
+			cfs_rq = &cpu_rq(best_cpu)->cfs;
+			est_util =
+				READ_ONCE(cfs_rq->avg.util_avg) + task_util(p);
+			est_util_enqueued =
+				READ_ONCE(cfs_rq->avg.util_est.enqueued);
+			est_util_enqueued += _task_util_est(p);
+			est_util = max(est_util, est_util_enqueued);
+			est_util = core_util - util_best_cpu + est_util;
+
+			if (est_util < core_cap) {
+				/*
+				 * Try to bias towards prev_cpu to avoid task
+				 * ping-pong behaviour inside the core.
+				 */
+				if (cpumask_test_cpu(prev_cpu,
+						     cpu_smt_mask(iter_cpu)))
+					return prev_cpu;
+
+				return best_cpu;
+			}
+		}
+	}
+
+	return select_idle_sibling(p, prev_cpu, target);
+}
 #endif
 
 /*
@@ -6856,6 +6941,23 @@ unlock:
 	return target;
 }
 
+#ifdef CONFIG_SCHED_SMT
+/*
+ * Select all jittersfor task packing
+ */
+static inline int turbosched_select_non_idle_core(struct task_struct *p,
+						  int prev_cpu, int target)
+{
+	return select_non_idle_core(p, prev_cpu, target);
+}
+#else
+static inline int turbosched_select_non_idle_core(struct task_struct *p,
+						  int prev_cpu, int target)
+{
+	return select_idle_sibling(p, prev_cpu, target);
+}
+#endif
+
 /*
  * select_task_rq_fair: Select target runqueue for the waking task in domains
  * that have the relevant SD flag set. In practice, this is SD_BALANCE_WAKE,
@@ -6920,7 +7022,11 @@ select_task_rq_fair(struct task_struct *p, int prev_cpu, int wake_flags)
 		new_cpu = find_idlest_cpu(sd, p, cpu, prev_cpu, sd_flag);
 	} else if (wake_flags & WF_TTWU) { /* XXX always ? */
 		/* Fast path */
-		new_cpu = select_idle_sibling(p, prev_cpu, new_cpu);
+		if (is_turbosched_enabled() && unlikely(is_task_jitter(p)))
+			new_cpu = turbosched_select_non_idle_core(p, prev_cpu,
+								  new_cpu);
+		else
+			new_cpu = select_idle_sibling(p, prev_cpu, new_cpu);
 
 		if (want_affine)
 			current->recent_used_cpu = cpu;

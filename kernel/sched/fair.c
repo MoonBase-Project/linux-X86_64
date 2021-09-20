@@ -6362,6 +6362,13 @@ static inline bool core_underutilized(unsigned long core_util,
 	return core_util < (core_capacity >> UNDERUTILIZED_THRESHOLD);
 }
 
+#ifndef arch_turbo_domain
+static __always_inline struct cpumask *arch_turbo_domain(int cpu)
+{
+	return sched_domain_span(rcu_dereference(per_cpu(sd_llc, cpu)));
+}
+#endif
+
 /*
  * Try to find a non idle core in the system  with spare capacity
  * available for task packing, thereby keeping minimal cores active.
@@ -6372,7 +6379,8 @@ static int select_non_idle_core(struct task_struct *p, int prev_cpu, int target)
 	struct cpumask *cpus = this_cpu_cpumask_var_ptr(turbo_sched_mask);
 	int iter_cpu, sibling;
 
-	cpumask_and(cpus, cpu_online_mask, p->cpus_ptr);
+	cpumask_and(cpus, cpu_online_mask, arch_turbo_domain(prev_cpu));
+	cpumask_and(cpus, cpus, p->cpus_ptr);
 
 	for_each_cpu_wrap(iter_cpu, cpus, prev_cpu) {
 		unsigned long core_util = 0;

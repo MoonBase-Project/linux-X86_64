@@ -129,9 +129,12 @@ static inline int cpu_to_coregroup_id(int cpu)
 #define topology_core_cpumask(cpu)	(per_cpu(cpu_core_map, cpu))
 #define topology_core_id(cpu)		(cpu_to_core_id(cpu))
 #define arch_scale_core_capacity	powerpc_scale_core_capacity
+#define arch_turbo_domain		powerpc_turbo_domain
 
 unsigned long powerpc_scale_core_capacity(int first_smt,
 					  unsigned long smt_cap);
+
+struct cpumask *powerpc_turbo_domain(int cpu);
 
 #endif
 #endif

@@ -1,6 +1,7 @@
 include Kbuild
 
 INSTALL_MOD_DIR ?= extra
+INSTALL_MOD_PATH ?= $(DESTDIR)
 
 SUBDIR_TARGETS = icp lua zstd
 
@@ -81,17 +82,17 @@ clean: clean-Linux
 modules_install-Linux:
 	@# Install the kernel modules
 	$(MAKE) -C /usr/src/linux M=`pwd` modules_install \
-		INSTALL_MOD_PATH=$(DESTDIR)$(INSTALL_MOD_PATH) \
+		INSTALL_MOD_PATH=$(INSTALL_MOD_PATH) \
 		INSTALL_MOD_DIR=$(INSTALL_MOD_DIR) \
-		KERNELRELEASE=5.14.3-Fury-rt21-00111-g3939c4e49b6e
+		KERNELRELEASE=5.14.9-Fury
 	@# Remove extraneous build products when packaging
-	kmoddir=$(DESTDIR)$(INSTALL_MOD_PATH)/lib/modules/5.14.3-Fury-rt21-00111-g3939c4e49b6e; \
+	kmoddir=$(INSTALL_MOD_PATH)/lib/modules/5.14.9-Fury; \
 	if [ -n "$(DESTDIR)" ]; then \
 		find $$kmoddir -name 'modules.*' | xargs $(RM); \
 	fi
-	sysmap=$(DESTDIR)$(INSTALL_MOD_PATH)/boot/System.map-5.14.3-Fury-rt21-00111-g3939c4e49b6e; \
+	sysmap=$(INSTALL_MOD_PATH)/boot/System.map-5.14.9-Fury; \
 	if [ -f $$sysmap ]; then \
-		depmod -ae -F $$sysmap 5.14.3-Fury-rt21-00111-g3939c4e49b6e; \
+		depmod -ae -F $$sysmap 5.14.9-Fury; \
 	fi
 
 modules_install-FreeBSD:
@@ -102,7 +103,7 @@ modules_install: modules_install-Linux
 
 modules_uninstall-Linux:
 	@# Uninstall the kernel modules
-	kmoddir=$(DESTDIR)$(INSTALL_MOD_PATH)/lib/modules/5.14.3-Fury-rt21-00111-g3939c4e49b6e; \
+	kmoddir=$(INSTALL_MOD_PATH)/lib/modules/5.14.9-Fury; \
 	for objdir in $(ZFS_MODULES); do \
 		$(RM) -R $$kmoddir/$(INSTALL_MOD_DIR)/$$objdir; \
 	done

@@ -493,7 +493,7 @@
 /* #undef HAVE_PUT_LINK_NAMEIDATA */
 
 /* If available, contains the Python version number currently in use. */
-#define HAVE_PYTHON "3.10"
+#define HAVE_PYTHON "3.9"
 
 /* qat is enabled and existed */
 /* #undef HAVE_QAT */
@@ -814,7 +814,7 @@
 /* #undef ZFS_IS_GPL_COMPATIBLE */
 
 /* Define the project alias string. */
-#define ZFS_META_ALIAS "zfs-2.1.99-463_ged3a3bdb0"
+#define ZFS_META_ALIAS "zfs-2.1.99-527_gac32854a6"
 
 /* Define the project author. */
 #define ZFS_META_AUTHOR "OpenZFS"
@@ -844,7 +844,7 @@
 #define ZFS_META_NAME "zfs"
 
 /* Define the project release. */
-#define ZFS_META_RELEASE "463_ged3a3bdb0"
+#define ZFS_META_RELEASE "527_gac32854a6"
 
 /* Define the project version. */
 #define ZFS_META_VERSION "2.1.99"
